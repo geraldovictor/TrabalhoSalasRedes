@@ -27,7 +27,7 @@
 #define SERVER_PORT 9000
 #define LISTEN_BACKLOG 5
 #define MAX_NAME_SZE 20
-#define MAX_CLIENT_ROOM 2
+#define MAX_CLIENT_ROOM 5
 #define MAX_ROOMS 5
 #define NO_OF_CLIENTS 10
 #define MAX_BUFFER_SIZE 1024
@@ -372,7 +372,7 @@ int process_recv_data(int socket,char*buffer) {
         printf("Chat with = %s\n",chat_c);
 
         room_index = find_the_room_index_by_name(chat_c);
-        
+
         memset(buffer,0,sizeof(buffer));
         for (int i = 0; i < room_list[room_index].total_client; i++) {
             strcat(buffer,room_list[room_index].client_list[i].cname);
