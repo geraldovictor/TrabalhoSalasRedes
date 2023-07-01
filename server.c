@@ -290,7 +290,7 @@ void server_add_new_client(struct sockaddr_in client_info, int new_socket_fd) {
 int process_recv_data(int socket,char*buffer) {
     char temp[MAX_BUFFER_SIZE];
     char chat_c[MAX_BUFFER_SIZE];
-    int room_id = 0;
+    int room_id = find_the_room_index_list(socket);;
     char buffer_send[MAX_BUFFER_SIZE] = {0};
     int index_sender = 0;
     int index_receiver = 0;
@@ -328,6 +328,15 @@ int process_recv_data(int socket,char*buffer) {
     }
 
     if(strncmp(buffer, "CONNECT",7) == 0) {
+
+        if(room_id != -1) {
+            memset(buffer,0,sizeof(buffer));
+            strcat(buffer,"Already connected to the room: ");
+            sprintf(temp, "%d", room_id);
+            strcat(buffer,temp);
+            server_send_to_client(socket,buffer);
+            goto out;
+        }
         
         // sscanf(buffer,"%*[^:]:%s",chat_c);
         // printf("Chat with = %s\n",chat_c);
@@ -351,7 +360,23 @@ int process_recv_data(int socket,char*buffer) {
         goto out;
     }
 
-    room_id = find_the_room_index_list(socket);
+    if(strncmp(buffer, "DISCONNECT",10) == 0) {
+        if (room_id == -1) {
+            server_send_to_client(server.client_list[index_sender].file_des,"Not connected to any room");
+            goto out;
+        }
+
+        for(int i=0;i<room_list[room_id].total_client;i++) {
+            if(room_list[room_id].client_list[i].file_des == socket) {
+                for(int j=i;j<room_list[room_id].total_client;j++) {
+                    room_list[room_id].client_list[j] = room_list[room_id].client_list[j+1];
+                }
+            }
+        }
+        room_list[room_id].total_client--;
+        goto out;
+    }
+
 
     if(room_id != -1) {
         snprintf(buffer_send,sizeof(buffer_send),"[%s] : %s",server.client_list[index_sender].cname,buffer);
