@@ -27,7 +27,7 @@
 #define SERVER_PORT 9000
 #define LISTEN_BACKLOG 5
 #define MAX_NAME_SZE 20
-#define MAX_CLIENT_ROOM 10
+#define MAX_CLIENT_ROOM 2
 #define MAX_ROOMS 5
 #define NO_OF_CLIENTS 10
 #define MAX_BUFFER_SIZE 1024
@@ -333,6 +333,11 @@ int process_recv_data(int socket,char*buffer) {
         // printf("Chat with = %s\n",chat_c);
         sscanf(buffer,"%*[^:]:%d",&room_id);
         printf("Chat with = %d\n",room_id);
+
+        if(room_list[room_id].total_client >= MAX_CLIENT_ROOM) {
+            server_send_to_client(server.client_list[index_sender].file_des,"Room not available");
+            goto out;
+        }
 
         room_list[room_id].client_list[room_list[room_id].total_client] = server.client_list[index_sender];
         room_list[room_id].client_list[room_list[room_id].total_client].room_id = room_id;
