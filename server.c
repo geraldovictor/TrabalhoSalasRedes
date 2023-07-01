@@ -170,8 +170,8 @@ int server_recv_from_client(int client_socket, char *recv_msg) {
             process_recv_data(client_socket, recv_msg);
     }
     else if(read_bytes == 0) {
-           printf("Client Disconnected\n");
-           server_delete_client(client_socket);  
+        printf("Client Disconnected\n");
+        server_delete_client(client_socket);  
     }
     else {
             printf("ERROR: recv failed\n");
@@ -259,6 +259,20 @@ void server_delete_client(int socket_fd_del) {
         }
     }
 
+    int room_index = find_the_room_index_list(socket_fd_del);
+
+    printf("room_index = %d\n",room_index);
+    
+    for(int i=0;i<room_list[room_index].total_client;i++) {
+        if(room_list[room_index].client_list[i].file_des == socket_fd_del) {
+            for(int j=i;j<room_list[room_index].total_client;j++) {
+                room_list[room_index].client_list[j] = room_list[room_index].client_list[j+1];
+            }
+        }
+    }
+    room_list[room_index].total_client--;
+
+
     server.total_client--;
     printf("Socket deleted  = [%d]\n",socket_fd_del);
     close(socket_fd_del);
@@ -305,14 +319,15 @@ int process_recv_data(int socket,char*buffer) {
             server_send_to_client(server.client_list[index_sender].file_des,"No more rooms can be created\n");
             goto out;
         }
-
+        sscanf(buffer,"%*[^:]:%s",chat_c);
+        printf("Chat with = %s\n",chat_c);
         room_index = find_the_room_index_by_name(chat_c);
+
         if (room_index != -1) {
             server_send_to_client(server.client_list[index_sender].file_des,"Room already exists\n");
             goto out;
         }
-        sscanf(buffer,"%*[^:]:%s",chat_c);
-        printf("Chat with = %s\n",chat_c);
+        
         strcpy(room_list[total_rooms].room_name, chat_c);
         total_rooms++;
         goto out;
@@ -353,9 +368,11 @@ int process_recv_data(int socket,char*buffer) {
     }
 
     if(strncmp(buffer, "ROOM",4) ==0) {
-        sscanf(buffer,"%*[^:]:%d",&room_index);
-        printf("Chat with = %d\n",room_index);
+        sscanf(buffer,"%*[^:]:%s",chat_c);
+        printf("Chat with = %s\n",chat_c);
 
+        room_index = find_the_room_index_by_name(chat_c);
+        
         memset(buffer,0,sizeof(buffer));
         for (int i = 0; i < room_list[room_index].total_client; i++) {
             strcat(buffer,room_list[room_index].client_list[i].cname);
@@ -383,7 +400,7 @@ int process_recv_data(int socket,char*buffer) {
         // printf("Chat with = %d\n",room_index);
         room_index = find_the_room_index_by_name(chat_c);
 
-        if(room_list[room_index].total_client >= MAX_CLIENT_ROOM) {
+        if(room_list[room_index].total_client >= MAX_CLIENT_ROOM || room_index == -1) {
             server_send_to_client(server.client_list[index_sender].file_des,"Room not available");
             goto out;
         }
