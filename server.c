@@ -44,7 +44,7 @@ typedef struct  {
     int file_des;
     int port;
     char ip[INET_ADDRSTRLEN];
-    int room;
+    int room_id;
 } client;
 
 typedef struct {
@@ -73,6 +73,7 @@ void server_add_new_client(struct sockaddr_in client_info, int new_socket_fd);
 int process_recv_data(int socket,char*buffer);
 int find_the_client_index_list(int socket);
 int find_the_client_index_by_name(char*name);
+int find_the_room_index_list(int socket);
 void cleanup(void);
 
 
@@ -230,7 +231,7 @@ int server_select(int max_fd,int listen_fd, fd_set *readfds, fd_set *writefds) {
          if(read(0,send_buff,sizeof(send_buff))>0) {
             for(int i = 0;i<server.total_client;i++)
                 server_send_to_client(server.client_list[i].file_des,send_buff);
-        }             
+        }
     }
      
     for(int i = 0; i<server.total_client; i++) {    
@@ -296,6 +297,7 @@ int process_recv_data(int socket,char*buffer) {
     int len = 0;
     index_sender = find_the_client_index_list(socket);
 
+
     if(strncmp(buffer, "LIST",4) ==0) {
          memset(buffer,0,sizeof(buffer));
         //  for(int i=0;i<server.total_client;i++) {
@@ -333,6 +335,7 @@ int process_recv_data(int socket,char*buffer) {
         printf("Chat with = %d\n",room_id);
 
         room_list[room_id].client_list[room_list[room_id].total_client] = server.client_list[index_sender];
+        room_list[room_id].client_list[room_list[room_id].total_client].room_id = room_id;
         room_list[room_id].total_client++;
         
         strcpy(server.client_list[index_sender].chatwith, chat_c);
@@ -343,10 +346,16 @@ int process_recv_data(int socket,char*buffer) {
         goto out;
     }
 
-    if(strlen(server.client_list[index_sender].chatwith) != 0){
+    room_id = find_the_room_index_list(socket);
+
+    if(room_id != -1) {
         snprintf(buffer_send,sizeof(buffer_send),"[%s] : %s",server.client_list[index_sender].cname,buffer);
         printf("Buffer  =%s\n",buffer_send);
-        server_send_to_client(server.client_list[index_sender].chatwith_fd,buffer_send);
+        for(int i=0; i< room_list[room_id].total_client;i++) {
+            server_send_to_client(room_list[room_id].client_list[i].file_des,buffer_send);
+        }
+        memset(buffer,0,sizeof(buffer));
+        // server_send_to_client(server.client_list[index_sender].chatwith_fd,buffer_send);
     }
 
 out:
@@ -364,15 +373,17 @@ int find_the_client_index_list(int socket) {
     return index;
 }
 
-// int find_the_room_index_list(char room_name) {
-//     int index = 0;
-//     for(int i = 0; i<server.total_client; i++) {
-//            if(server.client_list[i].file_des == socket) {
-//                index =i;
-//            }
-//     }
-//     return index;
-// }
+int find_the_room_index_list(int socket) {
+    int index = -1;
+    for(int i = 0; i<MAX_ROOMS; i++) {
+        for (int j = 0; j < room_list[i].total_client; j++) {
+            if(room_list[i].client_list[j].file_des == socket) {
+                index =i;
+            }
+        }
+    }
+    return index;
+}
 
 //find index of the client data structure from client name
 int find_the_client_index_by_name(char*name) {
